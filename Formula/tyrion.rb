@@ -41,7 +41,28 @@ class Tyrion < Formula
     source_binary = buildpath/binary_name
     odie "Expected prebuilt binary missing: #{source_binary}" unless source_binary.exist?
 
-    bin.install source_binary => "tyrionc"
+    libexec.install source_binary => "tyrion-compiler"
+
+    (bin/"tyrionc").write <<~EOS
+      #!/bin/bash
+      set -euo pipefail
+      ext_dir="#{pkgshare}/extensions"
+      has_ext_dir=0
+      for arg in "$@"; do
+        case "$arg" in
+          --ext-dir|--ext-dir=*)
+            has_ext_dir=1
+            ;;
+        esac
+      done
+      if [[ "$has_ext_dir" -eq 0 ]]; then
+        exec "#{libexec}/tyrion-compiler" --ext-dir "$ext_dir" "$@"
+      fi
+      exec "#{libexec}/tyrion-compiler" "$@"
+    EOS
+    chmod 0755, bin/"tyrionc"
+    (bin/"tyrion").make_symlink "tyrionc"
+    (bin/"tyrionic").make_symlink "tyrionc"
 
     resource("tyrion_source").stage do
       pkgshare.install "tyrionc.ty"
@@ -51,6 +72,8 @@ class Tyrion < Formula
 
   test do
     assert_match "tyrionc", shell_output("TYRION_ALLOW_STAGE_SNAPSHOT_HANDOFF=0 #{bin}/tyrionc --version")
+    assert_match "tyrionc", shell_output("TYRION_ALLOW_STAGE_SNAPSHOT_HANDOFF=0 #{bin}/tyrion --version")
+    assert_match "tyrionc", shell_output("TYRION_ALLOW_STAGE_SNAPSHOT_HANDOFF=0 #{bin}/tyrionic --version")
     assert_predicate pkgshare/"tyrionc.ty", :exist?
     assert_predicate pkgshare/"extensions", :exist?
     assert_predicate pkgshare/"extensions/README.md", :exist?
