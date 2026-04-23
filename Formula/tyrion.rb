@@ -43,6 +43,7 @@ class Tyrion < Formula
     odie "Expected prebuilt binary missing: #{source_binary}" unless source_binary.exist?
 
     libexec.install source_binary => "tyrion-compiler"
+    chmod 0755, libexec/"tyrion-compiler"
 
     (bin/"tyrionc").write <<~EOS
       #!/bin/bash
